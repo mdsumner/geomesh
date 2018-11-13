@@ -10,7 +10,7 @@ library(tidyverse)  ## write_lines
 #sc <- copy_down(DEL(xsf), gebco1)
 e <- new("Extent", xmin = -399385.062565881, xmax = -395571.828168234, 
          ymin = -44988.0566170369, ymax = -42439.9607344968)
-r <- raster::raster('data/ELVIS_CLIP.tif')
+r <- raster::raster('../r2vr3_shading/data/ELVIS_CLIP.tif')
 xsf <- spex::spex(raster::crop(r, e))
 
 sc <- copy_down(DEL(xsf, max_area = 9740455 / 1e3), r)
@@ -18,7 +18,8 @@ sc <- copy_down(DEL(xsf, max_area = 9740455 / 1e3), r)
 
 ## write to JSON
 index0 <- as.matrix(sc$triangle[c(".vx0", ".vx1", ".vx2")])
-source("helpers/trimesh_to_threejson.R")
+#source("helpers/trimesh_to_threejson.R")
+source("../r2vr3_shading/helpers/trimesh_to_threejson.R")
 mesh_json <- trimesh_to_threejson(vertices = as.matrix(sc$vertex[c("x_", "y_", "z_")]), 
                                   face_vertices = matrix(match(index0, sc$vertex$vertex_), ncol = 3))
 
