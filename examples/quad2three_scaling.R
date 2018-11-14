@@ -43,4 +43,5 @@ aframe_scene <-
                          position = c(0, 1 + 2 * zscale, 0),
                          rotation = c(-90, 180, 90))))
 
-aframe_scene$serve()
+## off RStudio server we need the host
+aframe_scene$serve(host = "0.0.0.0")
