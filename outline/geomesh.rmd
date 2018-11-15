@@ -78,3 +78,32 @@ if (!file.exists(f)) {
 
 ![Atlantis model](images/atlantis-bgm-3d.png)
 
+
+
+
+mesh3d described in https://hypertidy.github.io/quadmesh/articles/quadmesh.html#why-quadmesh
+
+
+Describe this indexing and then plot a raster with mesh_plot, lossless reprojection. 
+
+
+Describe the very basics of minimal_mesh, composed of edges, and trivially that it has one shared edge only. Using SC we can classify very easily the neighbours of any feature. 
+
+
+# Three viewpoints of a raster
+
+
+* discrete cells, sequential edges
+* discrete cells, quadrilateral edges
+* centre points, triangle edges
+
+3D view, the quad doesn't really make sense in continuous space
+
+
+```{r }
+
+# Three viewpoints of a polygon layer
+
+* discrete cells, sequential edges
+* discrete cells, n-coordinates clockwise path
+* 
