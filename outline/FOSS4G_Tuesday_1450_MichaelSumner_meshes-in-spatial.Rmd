@@ -48,7 +48,7 @@ Key ideas!
 
 ## Topology is not geometry
 
-Topopology emerges as an *index* into geometry. 
+Topology emerges as an *index* into geometry. 
 
 ```{r topology0,echo=TRUE}
 ## this is pure 3-space geometry, no connections
@@ -112,6 +112,8 @@ rglwidget()
 *Polygons are topologically equivalent to lines.* 
 
 *How to triangulate a polygon?*           (YIKES)
+
+*Raster and vector aren't so different*. 
 
 ## Motivations 
 
@@ -235,6 +237,7 @@ plot(tri, main = "two polygons", col = rep(mmcol, lengths(geom)))
 par(op)
 ```
 
+A raster and vector mesh use the same concepts. 
 
 ## When things go wrong
 
@@ -275,8 +278,10 @@ mesh$object$topology_[[2]]
 ```
 
 
-## Code
+## Live code
 
+
+[http://rpubs.com/cyclemumner/geomesh-r](http://rpubs.com/cyclemumner/geomesh-r)
 
 
 
