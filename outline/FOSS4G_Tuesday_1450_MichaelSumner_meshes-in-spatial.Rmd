@@ -1,0 +1,296 @@
+---
+title: "Meshes are needed <br>for geospatial work"
+output: ioslides_presentation
+editor_options: 
+  chunk_output_type: console
+---
+
+
+
+<style>
+  .col2 {
+    columns: 2 200px;         /* number of columns and width in pixels*/
+    -webkit-columns: 2 200px; /* chrome, safari */
+    -moz-columns: 2 200px;    /* firefox */
+  }
+  .col3 {
+    columns: 3 100px;
+    -webkit-columns: 3 100px;
+    -moz-columns: 3 100px;
+  }
+</style>
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(rgl)
+library(dplyr)
+library(raster)
+library(silicate)
+```
+
+## Questions
+
+* What are meshes and topology?
+* Relationship of meshes to raster/vector data?
+
+## What is a mesh?
+
+Key ideas!  
+
+* **Topology**: the *shape* of things and their relationships.  
+* **Geometry**: the *where* of things. 
+* **Indexing**: the *link* between topology and geometry. 
+
+<br><br><br><br><br><br><br><br>
+*(indexing of data-structures*, not database-indexing)
+
+## Topology is not geometry
+
+Topopology emerges as an *index* into geometry. 
+
+```{r topology0,echo=TRUE}
+## this is pure 3-space geometry, no connections
+(geometry <- cbind(x = c(0, 0.5, 1), y = c(0, 0.5, 1), z = c(0, 0, 0.8)))
+
+# line of 2-segments has 1-dimensional topology (2-index) 
+(topology1 <- cbind(.v0 = c(1, 2), .v1 = c(2, 3)))
+```
+
+## Topology is not geometry 
+
+```{r topology1,echo=TRUE}
+## this is pure 3-space geometry, no connections
+geometry
+
+# triangle has 2-dimensional topology (3-index)
+(topology2 <- cbind(.v0 = 1, .v1 = 2, .v2 = 3))
+```
+
+## Shared geometry
+
+```{r topology2,echo=FALSE}
+#Topology vs. geometry
+
+library(rgl)
+rgl.clear()
+mfrow3d(1, 2, sharedMouse = TRUE)
+library(rgl)
+lines3d(geometry[t(topology1), ], lwd = 3, col = "firebrick")
+material3d(col = "black")
+axis3d("x")
+axis3d("y")
+axis3d("z")
+title3d(xlab = "x", ylab = "y", zlab = "z")
+quads3d(cbind(c(0, 1, 1, 0), c(0, 0, 1, 1), c(0, 0, 0, 0) - 0.01), col="gray")
+
+next3d()
+triangles3d(geometry[t(topology2), ], col = "firebrick")
+material3d(col = "black")
+axis3d("x")
+axis3d("y")
+axis3d("z")
+title3d(xlab = "x", ylab = "y", zlab = "z")
+quads3d(cbind(c(0, 1, 1, 0), c(0, 0, 1, 1), c(0, 0, 0, 0)), col="gray")
+rglwidget()
+```
+
+## What is wrong with spatial? 
+
+*Traditional spatial data tends to confuse topology and geometry.*  
+
+*Polygons are topologically equivalent to lines.* 
+
+*How to triangulate a polygon?*   
+
+
+## What is wrong with spatial? 
+
+*Traditional spatial data tends to confuse topology and geometry.*  
+
+*Polygons are topologically equivalent to lines.* 
+
+*How to triangulate a polygon?*           (YIKES)
+
+## Motivations 
+
+* Lossless raster reprojection
+* Topology fixes and neighbour classification
+* Tracks and point clouds
+* 3D and 4D visualization, immersive experiences
+
+I want to jump the chasm from geospatial to computer graphics and VR. 
+
+
+## What is a raster? 
+
+What is a raster?
+
+A layer of neighbouring rectangles?   A regular grid of points? 
+
+```{r what-raster, echo=FALSE}
+library(raster)
+plot_edges <- function(x, main = "") {
+  sc <- silicate::SC(spex::polygonize(x))
+  e <- silicate::sc_edge(sc)
+  v <- silicate::sc_vertex(sc)
+  x0 <- e %>% dplyr::inner_join(v, c(".vx0" = "vertex_"))
+  x1 <- e %>% dplyr::inner_join(v, c(".vx1" = "vertex_"))
+  plot(rbind(x0, x1)[c("x_", "y_")], asp = 1, type = "n", 
+       axes = FALSE, xlab = "", ylab = "", main = main)
+  graphics::segments(x0$x_, x0$y_, x1$x_, x1$y_, lty = 2)
+}
+## What is a raster? 
+m <- matrix(c(seq(0, 0.5, length = 5), 
+            seq(0.375, 0, length = 4)), 3)
+colpal <- function(n = 26, drop = 5) sf::sf.colors(n)[-seq_len(drop)]
+plot_values <- function(x) {
+  plot(x, axes = FALSE, main = "value", box = FALSE, col = colpal()); 
+  text(coordinates(x), label = values(x))
+  plot(extent(x), add = TRUE)
+}
+plot_cells <- function(x) {
+  plot(x, axes = FALSE, main = "cell", legend = FALSE, box = FALSE, col = colpal()); 
+  plot(extent(x), add = TRUE)
+  text(coordinates(x), label = sprintf("[%i]", seq_len(ncell(x))), cex = 0.8)
+}
+r <- setExtent(raster(m), extent(0, ncol(m), 0, nrow(m)))
+op <- par(mfcol = c(1, 2))
+plot_values(raster(m))
+plot_edges(r, main = "points")
+points(coordinates(r), col = colpal(10, drop = 1)[scales::rescale(values(r), c(1, 9))], pch = 19, cex = 1.5)
+
+par(op)
+```
+
+
+
+
+## What is a polygon? 
+
+A series of grouped *paths*?
+
+```{r, echo=FALSE}
+library(silicate)
+mmcol <- c( "#0000B3FF", "#FFF50AFF") #viridis::viridis(2)
+mm <- sf::as_Spatial(minimal_mesh)
+par(mfcol = c(1, 2))
+plot(mm, main = "two polygons", col = mmcol)
+plot(mm, border = "transparent", main = "three paths")
+sc <- silicate::SC0(mm)
+o <- tidyr::unnest(sc$object[2:1, ]) ## flip so purple on top
+x0 <- sc$vertex[o$.vx0, ]
+x1 <- sc$vertex[o$.vx1, ]
+for (i in seq_len(nrow(x0))) {  ## sigh
+  arrows(x0$x_[i], x0$y_[i], x1$x_[i], x1$y_[i], col = mmcol[o$a[i]], lwd = 2, length = 0.1, angle = c(30, 15)[o$a[i]])
+}
+```
+
+## What's the fill? 
+
+In 3D, need to fill our polygons properly *as data*. 
+
+```{r, echo=FALSE}
+tri <- sfdct::ct_triangulate(minimal_mesh, a = 0.008, D = TRUE)
+geom <- tri$geom
+tri <- sf::st_set_geometry(tri, NULL)
+
+tri <- tri[rep(1:2, lengths(geom)), , drop = FALSE]
+
+tri[["geom"]] <- sf::st_as_sfc(lapply(unlist(geom, recursive = FALSE), sf::st_polygon))
+tri <- sf::st_as_sf(tibble::as_tibble(tri))
+
+
+## repeat previous plot
+op <- par(mfcol = c(1, 2))
+plot(mm, main = "two polygons", col = mmcol)
+plot(mm, border = "transparent", main = "what goes here?")
+sc <- silicate::SC0(mm)
+o <- tidyr::unnest(sc$object[2:1, ]) ## flip so purple on top
+x0 <- sc$vertex[o$.vx0, ]
+x1 <- sc$vertex[o$.vx1, ]
+for (i in seq_len(nrow(x0))) {  ## sigh
+  arrows(x0$x_[i], x0$y_[i], x1$x_[i], x1$y_[i], col = mmcol[o$a[i]], lwd = 2, length = 0.1, angle = c(30, 15)[o$a[i]])
+}
+#coords <- sf::st_coordinates(sf::st_centroid(tri))
+coords <- coordinates(as(tri, "Spatial"))
+text(coords, label = "?", cex = 0.7, col = mmcol[(tri$a == 2) + 1])
+#text(0.35, 0.35, "just\n a hole!", cex = 0.5)
+par(op)
+```
+
+The *fill* we see in traditional 2D graphics is a **trick!!**. 
+
+
+## Triangles
+
+To fill our polygon we need triangles. 
+
+```{r}
+#tri <- sf::st_cast(sfdct::ct_triangulate(minimal_mesh, a = 0.01, D = TRUE))
+## repeat previous plot
+op <- par(mar = par("mar") * 2)
+plot(tri, main = "two polygons", col = rep(mmcol, lengths(geom)))
+par(op)
+```
+
+
+## When things go wrong
+
+```{r broken,include=FALSE}
+library(silicate)
+borked <- minimal_mesh
+borked$geom[[2]][[1]] <- list(structure(c(0.69, 0.8, 1.1, 1.23, 1.23, 1.23, 0.69, 0, 0.6, 0.63, 0.3, 0.1, 0.3,
+0), .Dim = c(7L, 2L), .Dimnames = list(NULL, c("x", "y"))))
+#plot(borked)
+```
+
+`st_is_valid(x[2, ]) == FALSE`
+
+```{r sf-valid,echo-FALSE,include=TRUE}
+plot(as(borked, "Spatial"), col = mmcol)
+#sf::st_is_valid(borked)
+
+```
+
+## R package silicate, topology in tables
+<div class="col2">
+
+````{r silicate,echo=FALSE,include=TRUE,out.width="100%"}
+library(silicate)
+mesh <- SC0(borked)
+vertex <- mesh$vertex
+vertex$v <- 1:nrow(vertex)
+vertex <- vertex[sort(unlist(mesh$object$topology_[[2]])), ]
+plot(vertex$x_, vertex$y_, asp = 1, pch = ".")
+text(vertex$x_, vertex$y_, lab = vertex$v, pos = 2, adj = 1)
+idx<- mesh$object$topology_[[2]]
+segments(mesh$vertex$x_[idx[[1]]], mesh$vertex$y_[idx[[1]]], 
+         mesh$vertex$x_[idx[[2]]], mesh$vertex$y_[idx[[2]]])
+
+```
+```{r edges}
+mesh$object$topology_[[2]]
+```
+
+
+## Code
+
+
+
+
+## Thanks!
+
+Yakkin: @mdsumner
+
+Github: [github.com/mdsumner](https://github.com/mdsumner)
+
+Dreams: [github.com/hypertidy](https://github.com/hypertidy)
+
+Australian Antarctic Division  [antarctica.gov.au](https://www.antarctica.gov.au)
+
+Antarctic Climate and Ecosystems CRC  [acecrc.org.au](http://www.acecrc.org.au)
+
+[rOpenSci.org](https://www.rOpenSci.org)
+

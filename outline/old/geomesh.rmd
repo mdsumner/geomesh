@@ -14,7 +14,6 @@ library(rbgm)
 
 ## Abstract
 
-
 Modern geospatial standards don't include *meshes*, the basic data structures of computer graphics and physical modelling.  This talk will illustrate the nice features of mesh structures, why they have been somewhat ignored, and how we can work with them along with our geospatial workflows. 
 
 Meshes are inherently *indexed*, storing de-duplicated elements with pointers to shared parts. Primitive elements ( i.e. vertices, line segments, triangles, quads, tetrahedrons and others) are defined indirectly by index to the coordinates that define them. Shapes, and higher level groupings are stored by indexing the primitives they are composed of. Modern geospatial has mostly settled on the norm of inferring topology on-the-fly, and storing atomic records that are standalone - they don't require links to other parts of the data. However, when records are to be compared for relationships and whole or partial equality, they are decomposed to their essentials (primitives) and compared at a low level, with a summary shape sent back up to the surface. Our tools use tricks from mesh world to achieve these tasks, and we can benefit from using them more directly. 
@@ -29,7 +28,79 @@ Geospatial types are limited for some tasks, super efficient for planar tasks, b
 
 We will present some accessible tools in R for converting raster and vector data into mesh forms for visualization and integration with standard geospatial tools.
 
-# Meshes
+# Meshes are **used* in geospatial work
+
+* Lossless reprojection
+* Topology fixes
+* Neighbours
+* Tracks and point clouds
+* Visualization
+
+# How are meshes created? 
+
+* Decompose to edges
+* Find unique vertices
+* Find unique edges
+* Normalize vertices, edges, record groupings
+* (Optional) triangulate
+
+```{r silicate,echo=FALSE}
+library(sf)
+library(sp)
+library(silicate)
+mmcol <- viridis::viridis(2)
+mm <- sf::as_Spatial(minimal_mesh)
+op <- par(mfrow = c(2, 2), mar = par("mar")/2)
+plot(mm, main = "two polygons", col = mmcol)
+plot(mm, border = "transparent", main = "three paths")
+sc <- silicate::SC0(mm)
+o <- tidyr::unnest(sc$object[2:1, ]) ## flip so purple on top
+x0 <- sc$vertex[o$.vx0, ]
+x0$o <- o$a
+x1 <- sc$vertex[o$.vx1, ]
+for (i in seq_len(nrow(x0))) {  ## sigh
+  arrows(x0$x_[i], x0$y_[i], x1$x_[i], x1$y_[i], col = mmcol[o$a[i]], lwd = 2, length = c(0.1, 0.25)[(x0$o[i] == 2) + 1], angle = c(30, 15)[o$a[i]])
+}
+plot_edges <- function(x) {
+  v <- sc_vertex(x)
+  edge <- sc_edge(x)
+  plot(v$x_, v$y_, type = "n", main = "fifteen edges", axes = FALSE, xlab = "", ylab = "", asp = 1)
+  idx0 <- match(edge$.vx0, v$vertex_)
+  idx1 <- match(edge$.vx1, v$vertex_)
+  segments(v$x_[idx0], v$y_[idx0], v$x_[idx1], v$y_[idx1], 
+           col = c("black", "firebrick"), lwd = 2, lty = c(1, 2, 3))
+}
+
+scx <- SC(minimal_mesh)
+plot_edges(scx)
+
+v <- scx$vertex
+plot(v$x_, v$y_, type = "n", main = "fourteen corners", axes = FALSE, xlab = "", ylab = "", asp = 1)
+edge <- sc_edge(scx)
+  idx0 <- match(edge$.vx0, v$vertex_)
+  idx1 <- match(edge$.vx1, v$vertex_)
+  segments(v$x_[idx0], v$y_[idx0], v$x_[idx1], v$y_[idx1], lwd = 1, col = "grey")
+text(v$x_, v$y_, lab = 1:nrow(v))
+par(op)
+```
+
+# Triangulation
+
+There are two main kinds of constrained triangulation: 
+
+* Delaunay-based, require unique vertices, unique edges, post-processing for hole identification, control over triangle quality
+* ear-clipping, standard simple-features paths, low-quality triangles
+
+```{r Triangle, echo=FALSE}
+op <- par(mfcol = c(1, 2))
+t1 <- as(sf::st_cast(sfdct::ct_triangulate(minimal_mesh)), "Spatial")
+t2 <- as(sf::st_cast(sfdct::ct_triangulate(minimal_mesh, a = 0.04, D = TRUE)), "Spatial")
+mmcol <- rev(sf.colors(2))
+plot(t1, main = "Triangle, default", col = mmcol[(t1$a == 1) + 1])
+plot(t2, main = "Triangle, max-area, Delaunay", col = mmcol[(t2$a == 1)+ 1])
+par(op)
+
+```
 
 Wikipedia: 
 
